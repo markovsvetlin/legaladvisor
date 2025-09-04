@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import userRoutes from './user/routes';
 import { authMiddleware } from './middleware/auth';
+import { redis } from './utils/redis';
 
 dotenv.config();
 
@@ -28,8 +29,21 @@ app.get('/api/protected', authMiddleware, (req, res) => {
 });
 
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on http://localhost:${PORT}`);
-  console.log(`📊 Health check available at http://localhost:${PORT}/api/health`);
-});
+// Initialize Redis and start server
+async function startServer() {
+  try {
+    // Connect to Redis (will gracefully handle connection failures)
+    await redis.connect();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend server running on http://localhost:${PORT}`);
+      console.log(`📊 Health check available at http://localhost:${PORT}/api/health`);
+      console.log(`🔥 Redis caching: ${redis.isConnected() ? 'ENABLED' : 'DISABLED'}`);
+    });
+  } catch (error) {
+    console.log('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

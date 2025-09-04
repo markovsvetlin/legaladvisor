@@ -7,6 +7,7 @@ export function LoginButton() {
   const { data: session, status } = useSession()
   const [testResult, setTestResult] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const testProtectedRoute = async () => {
     setIsLoading(true)
@@ -30,7 +31,7 @@ export function LoginButton() {
         token = tokenData.token
       } else {
         // Fallback: try to get token from session
-        token = (sessionData as any)?.accessToken || "dummy-token"
+        token = (sessionData as { accessToken?: string })?.accessToken || "dummy-token"
       }
 
       // Test the protected backend route
@@ -55,6 +56,40 @@ export function LoginButton() {
     }
   }
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    
+    try {
+      // First, get the JWT token
+      const tokenResponse = await fetch('/api/auth/jwt')
+      
+      if (tokenResponse.ok) {
+        const tokenData = await tokenResponse.json()
+        const token = tokenData.token
+        
+        // Call backend logout to invalidate cache
+        const logoutResponse = await fetch('http://localhost:3001/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        
+        if (logoutResponse.ok) {
+          console.log('✅ Cache invalidated on logout')
+        } else {
+          console.log('⚠️ Failed to invalidate cache, but continuing logout')
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Error during cache invalidation:', error)
+    }
+    
+    // Always proceed with NextAuth logout regardless of cache invalidation result
+    signOut({ callbackUrl: "/" })
+  }
+
   if (status === "loading") return <p>Loading...</p>
 
   if (session) {
@@ -63,10 +98,11 @@ export function LoginButton() {
         <div className="flex items-center gap-4">
           <p>Hello {session.user?.name}</p>
           <button 
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
           >
-            Sign out
+            {isLoggingOut ? "Signing out..." : "Sign out"}
           </button>
         </div>
         

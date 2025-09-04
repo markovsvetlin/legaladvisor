@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import jwt from 'jsonwebtoken'
+import { jwtCache } from '../utils/jwt-cache'
 
 declare global {
   namespace Express {
@@ -30,19 +30,20 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       return res.status(500).json({ error: 'Server configuration error' })
     }
 
-    console.log('🔍 Attempting to verify token...')
+    console.log('🔍 Attempting to get user from cache or verify token...')
     console.log('Token length:', token.length)
     console.log('Secret configured:', !!secret)
 
-    const decoded = jwt.verify(token, secret) as any
-    console.log('✅ Token decoded successfully:', { sub: decoded.sub, name: decoded.name, email: decoded.email })
+    // Use JWT cache - will hit Redis or decode if not cached
+    const user = await jwtCache.getUser(token, secret)
     
-    req.user = {
-      sub: decoded.sub,
-      name: decoded.name,
-      email: decoded.email,
-      picture: decoded.picture
+    if (!user) {
+      console.log('❌ Failed to get user data')
+      return res.status(401).json({ error: 'Invalid token' })
     }
+
+    console.log('✅ User authenticated:', { sub: user.sub, name: user.name, email: user.email })
+    req.user = user
     
     next()
   } catch (error) {

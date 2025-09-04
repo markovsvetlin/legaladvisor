@@ -1,0 +1,69 @@
+services:
+  # Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: legal-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 3
+    networks:
+      - legal-network
+
+  # Frontend Next.js Service  
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: legal-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=http://localhost:3000
+      - AUTH_TRUST_HOST=true
+    depends_on:
+      - backend
+    networks:
+      - legal-network
+
+  # Backend API Service
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legal-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      # Mount source code for live changes (DEV ONLY)
+      - ./backend/src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - legal-network
+    command: npm run dev
+
+networks:
+  legal-network:
+    driver: bridge
+
+volumes:
+  redis_data:
