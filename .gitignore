@@ -9,3 +9,11 @@ frontend/node_modules
 .env.development.local
 .env.test.local
 .env.production.local  
+/backend/dist
+/frontend/dist
+/frontend/.next
+/backend/.next
+/backend/dist
+/frontend/dist
+/frontend/.next
+/backend/.next

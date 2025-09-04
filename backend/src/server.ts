@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import userRoutes from './user/routes';
+import { authMiddleware } from './middleware/auth';
 
 dotenv.config();
 
@@ -17,6 +18,14 @@ app.use(express.json());
 
 // Routes
 app.use('/api', userRoutes);
+
+// Protected route example
+app.get('/api/protected', authMiddleware, (req, res) => {
+  res.json({ 
+    message: 'This is a protected route',
+    user: req.user 
+  });
+});
 
 
 // Start server
